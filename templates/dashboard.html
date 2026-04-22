@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Network Security Scanner</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="manifest" href="/static/manifest.webmanifest">
+    <meta name="theme-color" content="#dc3545">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="/static/css/security-alerts.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --dark: #1a1a2e;
+        }
+        
+        html {
+            overflow-y: scroll;
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            background: #f5f5f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+        
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 260px;
+            background: linear-gradient(135deg, var(--dark) 0%, #16213e 100%);
+            color: white;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-menu {
+            padding: 20px 0;
+        }
+        
+        .sidebar-menu-item {
+            padding: 12px 25px;
+            margin: 5px 0;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .sidebar-menu-item:hover, .sidebar-menu-item.active {
+            background: rgba(102, 126, 234, 0.3);
+            border-left: 4px solid var(--primary);
+        }
+        
+        .sidebar-menu-item i {
+            width: 30px;
+            margin-right: 10px;
+        }
+        
+        .main-content {
+            margin-left: 260px;
+            padding: 20px;
+            min-height: 100vh;
+            overflow-y: visible;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .scan-progress {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            z-index: 2000;
+            min-width: 300px;
+            text-align: center;
+        }
+        
+        .scan-progress.active {
+            display: block;
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .loading {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        .results-table {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .severity-high { color: #dc3545; }
+        .severity-medium { color: #ffc107; }
+        .severity-low { color: #28a745; }
+        .risk-critical { color: #ff4d4d; font-weight: 800; }
+        .risk-high { color: #ff922b; font-weight: 700; }
+        .risk-medium { color: #ffc107; font-weight: 600; }
+        .risk-low { color: #51cf66; }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h3><i class="fas fa-shield-alt"></i> NetScan</h3>
+            <small>Advanced Network Scanner</small>
+            <div class="mt-3 pt-3 border-top border-secondary text-center">
+                <img id="sidebar-avatar" src="" alt="" class="rounded-circle border border-light mb-2" width="56" height="56" style="object-fit:cover;display:none;">
+                <div id="sidebar-username" class="small text-white-50">…</div>
+            </div>
+        </div>
+        <div class="sidebar-menu">
+            <div class="sidebar-menu-item active" data-page="dashboard">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </div>
+            <div class="sidebar-menu-item" data-page="scanner">
+                <i class="fas fa-search"></i> Port Scanner
+            </div>
+            <div class="sidebar-menu-item" data-page="nearby">
+                <i class="fas fa-wifi"></i> Nearby Devices
+            </div>
+            <div class="sidebar-menu-item" data-page="network">
+                <i class="fas fa-network-wired"></i> Network Mapping
+            </div>
+            <div class="sidebar-menu-item" data-page="mac-lookup">
+                <i class="fas fa-exchange-alt"></i> MAC ↔ IP Lookup
+            </div>
+            <div class="sidebar-menu-item" data-page="reports">
+                <i class="fas fa-chart-line"></i> Reports
+            </div>
+            <div class="sidebar-menu-item" data-page="vulnerabilities">
+                <i class="fas fa-bug"></i> Vulnerabilities
+            </div>
+            <div class="sidebar-menu-item" data-page="profile">
+                <i class="fas fa-user"></i> Profile
+            </div>
+            <div class="sidebar-menu-item" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Dashboard Page -->
+        <div id="dashboard-page" class="page-content">
+            <h2 class="mb-4"><i class="fas fa-tachometer-alt"></i> Dashboard <span class="text-muted fs-6 fw-normal" id="dash-welcome"></span></h2>
+            
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <i class="fas fa-microchip fa-2x mb-2" style="color: var(--primary);"></i>
+                        <h3 id="total-scans">0</h3>
+                        <p>Total Scans</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <i class="fas fa-door-open fa-2x mb-2" style="color: #28a745;"></i>
+                        <h3 id="open-ports">0</h3>
+                        <p>Open Ports Found</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <i class="fas fa-network-wired fa-2x mb-2" style="color: #17a2b8;"></i>
+                        <h3 id="hosts-discovered">0</h3>
+                        <p>Hosts Discovered</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-2" style="color: #ffc107;"></i>
+                        <h3 id="vulnerabilities">0</h3>
+                        <p>Vulnerabilities</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="stat-card">
+                        <h5><i class="fas fa-chart-line"></i> Scan Performance</h5>
+                        <canvas id="performanceChart" height="200"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="stat-card">
+                        <h5><i class="fas fa-chart-pie"></i> Port Distribution <small class="text-muted fw-normal">(click a slice)</small></h5>
+                        <canvas id="portChart" height="200"></canvas>
+                        <p class="small text-muted mb-0 mt-2" id="port-chart-hint">Select a colored segment to see port details from your scans.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Scanner Page -->
+        <div id="scanner-page" class="page-content" style="display: none;">
+            <h2 class="mb-4"><i class="fas fa-search"></i> Advanced Port Scanner</h2>
+            
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="stat-card">
+                        <h5>Scan Configuration</h5>
+                        <form id="scan-form">
+                            <div class="mb-3">
+                                <label>Target IP / Hostname</label>
+                                <input type="text" class="form-control" id="target" placeholder="192.168.1.1 or example.com" required>
+                            </div>
+                            <div class="mb-3">
+                                <label>Port Range</label>
+                                <input type="text" class="form-control" id="port-range" value="1-1000" placeholder="all, 1-1000, 80,443">
+                                <small class="text-muted">Use <code>all</code> for ports 1–65535 (slow).</small>
+                            </div>
+                            <div class="mb-3">
+                                <label>Scan Type</label>
+                                <select class="form-control" id="scan-type">
+                                    <option value="tcp">TCP Connect Scan</option>
+                                    <option value="udp">UDP Scan</option>
+                                    <option value="all">All scan types (TCP + UDP)</option>
+                                    <option value="syn">SYN Scan (Stealth)</option>
+                                    <option value="fin">FIN Scan</option>
+                                    <option value="null">NULL Scan</option>
+                                    <option value="xmas">XMAS Scan</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label>Threads</label>
+                                <input type="number" class="form-control" id="threads" value="100" min="1" max="500">
+                            </div>
+                            <div class="mb-3">
+                                <label>Timeout (seconds)</label>
+                                <input type="number" class="form-control" id="timeout" value="1" step="0.5">
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-play"></i> Start Scan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="col-md-8">
+                    <div class="stat-card">
+                        <h5>Scan Results</h5>
+                        <div id="scan-results" class="results-table">
+                            <div class="alert alert-info">Configure and start a scan to see results</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Nearby devices (LAN / same Wi‑Fi segment) -->
+        <div id="nearby-page" class="page-content" style="display: none;">
+            <h2 class="mb-2"><i class="fas fa-wifi"></i> Nearby Devices</h2>
+            <p class="text-muted small mb-3" id="nearby-note">Discovering hosts on your local network (ARP + ping). Same Wi‑Fi/LAN segment is often within ~100 m of the access point.</p>
+            <div class="stat-card mb-3">
+                <button type="button" class="btn btn-primary" onclick="loadNearbyDevices()"><i class="fas fa-sync"></i> Refresh list</button>
+                <span class="ms-3 text-muted" id="nearby-meta"></span>
+            </div>
+            <div class="stat-card">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm">
+                        <thead><tr>
+                            <th>Device name</th><th>Vendor</th><th>IP</th><th>MAC</th><th>OS guess</th><th>Category</th><th>TTL</th>
+                        </tr></thead>
+                        <tbody id="nearby-tbody"></tbody>
+                    </table>
+                </div>
+                <div id="nearby-empty" class="alert alert-info d-none">No devices found yet. Click Refresh (may require admin / same subnet).</div>
+            </div>
+        </div>
+        
+        <!-- Network Mapping Page -->
+        <div id="network-page" class="page-content" style="display: none;">
+            <h2 class="mb-4"><i class="fas fa-network-wired"></i> Network Mapping</h2>
+            
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="stat-card">
+                        <h5>Network Discovery</h5>
+                        <div class="mb-3">
+                            <label>Network CIDR</label>
+                            <input type="text" class="form-control" id="network-cidr" placeholder="192.168.1.0/24" value="192.168.1.0/24">
+                        </div>
+                        <div class="form-check mb-3">
+                            <input type="checkbox" class="form-check-input" id="scan-ports">
+                            <label class="form-check-label">Scan open ports on discovered hosts</label>
+                        </div>
+                        <button class="btn btn-primary w-100" onclick="discoverNetwork()">
+                            <i class="fas fa-search"></i> Discover Network
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="col-md-8">
+                    <div class="stat-card">
+                        <h5>Network Topology</h5>
+                        <div id="network-map"></div>
+                        <div id="network-results"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- MAC / IP lookup -->
+        <div id="mac-lookup-page" class="page-content" style="display: none;">
+            <h2 class="mb-4"><i class="fas fa-exchange-alt"></i> MAC ↔ IP Lookup</h2>
+            <p class="text-muted">Resolve MAC ↔ IP via the local ARP table, then infer vendor (OUI), hostname (DNS), device category, and OS hint (from ICMP TTL).</p>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="stat-card">
+                        <h5>IP → MAC</h5>
+                        <div class="mb-3">
+                            <label class="form-label">IPv4 address</label>
+                            <input type="text" class="form-control" id="mac-lookup-ip" placeholder="192.168.1.10">
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="runMacLookup()"><i class="fas fa-search"></i> Lookup</button>
+                        <div id="mac-lookup-result" class="mt-3"></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="stat-card">
+                        <h5>MAC → IP</h5>
+                        <div class="mb-3">
+                            <label class="form-label">MAC address</label>
+                            <input type="text" class="form-control" id="mac-lookup-mac" placeholder="AA:BB:CC:DD:EE:FF">
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="runDeviceResolveFull()"><i class="fas fa-search"></i> Resolve</button>
+                        <div id="mac-lookup-mac-result" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Reports Page -->
+        <div id="reports-page" class="page-content" style="display: none;">
+            <h2 class="mb-4"><i class="fas fa-chart-line"></i> Scan Reports</h2>
+            <div class="stat-card">
+                <div id="reports-list"></div>
+            </div>
+        </div>
+        
+        <!-- Vulnerabilities Page -->
+        <div id="vulnerabilities-page" class="page-content" style="display: none;">
+            <h2 class="mb-4"><i class="fas fa-bug"></i> Vulnerability Assessment</h2>
+            <div class="stat-card">
+                <div id="vulnerabilities-list"></div>
+            </div>
+        </div>
+        
+        <!-- Profile Page -->
+        <div id="profile-page" class="page-content" style="display: none;">
+            <h2 class="mb-4"><i class="fas fa-user"></i> User Profile</h2>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="stat-card">
+                        <h5>Profile Information</h5>
+                        <div class="mb-3">
+                            <img id="profile-avatar-preview" src="" alt="" class="rounded-circle border mb-2" width="96" height="96" style="object-fit:cover;display:none;">
+                            <div>
+                                <input type="file" class="form-control form-control-sm" id="avatar-file" accept="image/png,image/jpeg,image/gif,image/webp">
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="uploadAvatar()"><i class="fas fa-upload"></i> Save photo</button>
+                            </div>
+                        </div>
+                        <div id="profile-info"></div>
+                        <hr>
+                        <h6>API Key</h6>
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" id="api-key" readonly>
+                            <button class="btn btn-outline-primary" onclick="copyApiKey()">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="regenerateApiKey()">
+                                <i class="fas fa-sync"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted">Use this API key for programmatic access</small>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="stat-card">
+                        <h5>Change Password</h5>
+                        <form id="change-password-form">
+                            <div class="mb-3">
+                                <label>New Password</label>
+                                <input type="password" class="form-control" id="new-password" required>
+                            </div>
+                            <div class="mb-3">
+                                <label>Confirm Password</label>
+                                <input type="password" class="form-control" id="confirm-password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Update Password</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal fade" id="portDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="portDetailTitle">Port details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="portDetailBody"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scan Progress Modal -->
+    <div id="scan-progress" class="scan-progress">
+        <h4><i class="fas fa-spinner fa-spin"></i> Scanning in Progress</h4>
+        <div class="progress mt-3">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+        </div>
+        <p class="mt-3" id="scan-status">Initializing scan...</p>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/security-alerts.js"></script>
+    <script src="/static/js/pwa-register.js"></script>
+    <script>
+        let currentScanId = null;
+        let performanceChart = null;
+        let portChart = null;
+        let portDistributionDetail = {};
+        
+        const PORT_SVC_NAMES = {
+            20:'FTP-data',21:'FTP',22:'SSH',23:'Telnet',25:'SMTP',53:'DNS',67:'DHCP',68:'DHCP',80:'HTTP',110:'POP3',111:'RPC',135:'MSRPC',
+            139:'NetBIOS',143:'IMAP',443:'HTTPS',445:'SMB',993:'IMAPS',995:'POP3S',1723:'PPTP',3306:'MySQL',3389:'RDP',5432:'PostgreSQL',
+            5900:'VNC',6379:'Redis',8080:'HTTP-Alt',8443:'HTTPS-Alt',27017:'MongoDB'
+        };
+        function portLabelWithService(portKey) {
+            const n = parseInt(portKey, 10);
+            const svc = PORT_SVC_NAMES[n] || 'unknown';
+            return n + ' (' + svc + ')';
+        }
+        function portKeyFromChartLabel(lbl) {
+            const m = String(lbl).match(/^(\d+)/);
+            return m ? m[1] : String(lbl);
+        }
+        
+        // Page navigation
+        document.querySelectorAll('.sidebar-menu-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const page = item.dataset.page;
+                if (!page) return;
+                
+                document.querySelectorAll('.sidebar-menu-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                
+                document.querySelectorAll('.page-content').forEach(p => p.style.display = 'none');
+                document.getElementById(`${page}-page`).style.display = 'block';
+                
+                if (page === 'dashboard') loadDashboard();
+                if (page === 'reports') loadReports();
+                if (page === 'vulnerabilities') loadVulnerabilities();
+                if (page === 'profile') loadProfile();
+                if (page === 'nearby') loadNearbyDevices();
+                if (page === 'mac-lookup') { /* static */ }
+            });
+        });
+        
+        async function refreshUserBadge() {
+            try {
+                const p = await fetch('/api/profile', { credentials: 'same-origin' }).then(r => r.json());
+                const el = document.getElementById('sidebar-username');
+                if (el) el.textContent = p.username || '';
+                const w = document.getElementById('dash-welcome');
+                if (w) w.textContent = p.username ? '— ' + p.username : '';
+                const img = document.getElementById('sidebar-avatar');
+                if (img && p.avatar_url) {
+                    img.src = p.avatar_url + '?t=' + Date.now();
+                    img.style.display = 'inline-block';
+                } else if (img) {
+                    img.style.display = 'none';
+                }
+            } catch (e) { console.error(e); }
+        }
+        
+        async function runMacLookup() {
+            const ip = document.getElementById('mac-lookup-ip').value.trim();
+            const out = document.getElementById('mac-lookup-result');
+            if (!ip) { out.innerHTML = '<div class="alert alert-warning">Enter an IPv4 address.</div>'; return; }
+            out.innerHTML = '<div class="text-muted"><i class="fas fa-spinner fa-spin"></i> Querying ARP…</div>';
+            try {
+                const r = await fetch('/api/mac-from-ip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ ip })
+                });
+                const d = await r.json();
+                if (!r.ok) throw new Error(d.error || 'failed');
+                out.innerHTML = '<div class="alert alert-success mb-0 small">' +
+                    '<strong>IP:</strong> ' + (d.ip || '—') + '<br>' +
+                    '<strong>MAC:</strong> <code>' + (d.mac || 'Unknown') + '</code><br>' +
+                    '<strong>Vendor:</strong> ' + (d.vendor || 'Unknown') + '<br>' +
+                    '<strong>Device name:</strong> ' + (d.device_name || '—') + '<br>' +
+                    '<strong>Hostname:</strong> ' + (d.hostname || '—') + '<br>' +
+                    '<strong>OS guess:</strong> ' + (d.os_guess || '—') + '<br>' +
+                    '<strong>Category:</strong> ' + (d.device_category || '—') + (d.ttl != null ? '<br><strong>TTL:</strong> ' + d.ttl : '') +
+                    '</div>';
+            } catch (e) {
+                out.innerHTML = '<div class="alert alert-danger">' + e.message + '</div>';
+            }
+        }
+        
+        async function runDeviceResolveFull() {
+            const mac = document.getElementById('mac-lookup-mac').value.trim();
+            const ip = document.getElementById('mac-lookup-ip').value.trim();
+            const out = document.getElementById('mac-lookup-mac-result');
+            if (!mac && !ip) {
+                out.innerHTML = '<div class="alert alert-warning">Enter a MAC and/or IP.</div>';
+                return;
+            }
+            out.innerHTML = '<div class="text-muted"><i class="fas fa-spinner fa-spin"></i> Resolving…</div>';
+            try {
+                const r = await fetch('/api/device-resolve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ mac: mac || undefined, ip: ip || undefined })
+                });
+                const d = await r.json();
+                if (!r.ok) throw new Error(d.error || 'failed');
+                out.innerHTML = '<div class="alert alert-success mb-0 small">' +
+                    '<strong>IP:</strong> ' + (d.ip || '—') + '<br>' +
+                    '<strong>MAC:</strong> <code>' + (d.mac || 'Unknown') + '</code><br>' +
+                    '<strong>Vendor:</strong> ' + (d.vendor || 'Unknown') + '<br>' +
+                    '<strong>Device name:</strong> ' + (d.device_name || '—') + '<br>' +
+                    '<strong>Hostname:</strong> ' + (d.hostname || '—') + '<br>' +
+                    '<strong>OS guess:</strong> ' + (d.os_guess || '—') + '<br>' +
+                    '<strong>Category:</strong> ' + (d.device_category || '—') + (d.ttl != null ? '<br><strong>TTL:</strong> ' + d.ttl : '') +
+                    '</div>';
+            } catch (e) {
+                out.innerHTML = '<div class="alert alert-danger">' + e.message + '</div>';
+            }
+        }
+        
+        async function loadNearbyDevices() {
+            const tbody = document.getElementById('nearby-tbody');
+            const empty = document.getElementById('nearby-empty');
+            const meta = document.getElementById('nearby-meta');
+            const note = document.getElementById('nearby-note');
+            tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Loading…</td></tr>';
+            try {
+                const r = await fetch('/api/nearby-devices', { credentials: 'same-origin' });
+                const d = await r.json();
+                if (!r.ok) throw new Error(d.error || 'failed');
+                if (note && d.note) note.textContent = d.note;
+                meta.textContent = 'Network ' + (d.network || '') + (d.this_host_ip ? ' · This host: ' + d.this_host_ip : '') + ' · ' + (d.device_count || 0) + ' devices';
+                if (!d.devices || !d.devices.length) {
+                    tbody.innerHTML = '';
+                    empty.classList.remove('d-none');
+                    return;
+                }
+                empty.classList.add('d-none');
+                tbody.innerHTML = d.devices.map(dev => {
+                    return '<tr><td>' + (dev.device_name || '—') + '</td><td>' + (dev.vendor || '—') + '</td><td><code>' + (dev.ip || '—') + '</code></td><td><code>' + (dev.mac || '—') + '</code></td><td>' + (dev.os_guess || '—') + '</td><td>' + (dev.device_category || '—') + '</td><td>' + (dev.ttl != null ? dev.ttl : '—') + '</td></tr>';
+                }).join('');
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-danger">' + e.message + '</td></tr>';
+            }
+        }
+        
+        async function uploadAvatar() {
+            const inp = document.getElementById('avatar-file');
+            if (!inp.files || !inp.files[0]) { alert('Choose an image first'); return; }
+            const fd = new FormData();
+            fd.append('file', inp.files[0]);
+            try {
+                const r = await fetch('/api/profile/avatar', { method: 'POST', credentials: 'same-origin', body: fd });
+                const d = await r.json();
+                if (!r.ok) throw new Error(d.error || 'Upload failed');
+                await loadProfile();
+                await refreshUserBadge();
+                alert('Photo updated');
+            } catch (e) { alert(e.message); }
+        }
+        
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                await refreshUserBadge();
+                const scans = await fetch('/api/reports?type=scans', { credentials: 'same-origin' }).then(r => r.json());
+                const vulns = await fetch('/api/reports?type=vulnerabilities', { credentials: 'same-origin' }).then(r => r.json());
+                const network = await fetch('/api/reports?type=network', { credentials: 'same-origin' }).then(r => r.json());
+                
+                document.getElementById('total-scans').textContent = scans.length;
+                document.getElementById('open-ports').textContent = scans.reduce((sum, s) => sum + (s.open_ports || 0), 0);
+                document.getElementById('hosts-discovered').textContent = network.reduce((sum, n) => sum + (n.hosts_found || 0), 0);
+                document.getElementById('vulnerabilities').textContent = vulns.length;
+                
+                // Performance chart
+                const ctx = document.getElementById('performanceChart').getContext('2d');
+                if (performanceChart) performanceChart.destroy();
+                performanceChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: scans.slice(-10).map(s => new Date(s.start_time).toLocaleDateString()),
+                        datasets: [{
+                            label: 'Scan Duration (ms)',
+                            data: scans.slice(-10).map(s => (new Date(s.end_time) - new Date(s.start_time))),
+                            borderColor: '#667eea',
+                            tension: 0.4
+                        }]
+                    }
+                });
+                
+                // Port distribution chart + detail map for click
+                const portCounts = {};
+                portDistributionDetail = {};
+                scans.forEach(scan => {
+                    if (!scan.result_json) return;
+                    let results;
+                    try { results = JSON.parse(scan.result_json); } catch (e) { return; }
+                    const tgt = scan.target || '';
+                    Object.keys(results).forEach(port => {
+                        if (results[port].open !== true) return;
+                        portCounts[port] = (portCounts[port] || 0) + 1;
+                        if (!portDistributionDetail[port]) {
+                            portDistributionDetail[port] = { count: 0, services: {}, targets: [], risks: [] };
+                        }
+                        portDistributionDetail[port].count++;
+                        const svc = results[port].service || 'unknown';
+                        portDistributionDetail[port].services[svc] = (portDistributionDetail[port].services[svc] || 0) + 1;
+                        if (tgt && portDistributionDetail[port].targets.indexOf(tgt) < 0) {
+                            portDistributionDetail[port].targets.push(tgt);
+                        }
+                        const rk = results[port].risk || '';
+                        if (rk && portDistributionDetail[port].risks.indexOf(rk) < 0) portDistributionDetail[port].risks.push(rk);
+                    });
+                });
+                
+                const portKeys = Object.keys(portCounts).slice(0, 12);
+                const portLabels = portKeys.map(portLabelWithService);
+                const portData = portKeys.map(p => portCounts[p]);
+                const portCtx = document.getElementById('portChart').getContext('2d');
+                if (portChart) portChart.destroy();
+                window._portChartKeys = portKeys;
+                const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00d4aa', '#ff9f43', '#ee5a6f', '#5f27cd', '#00d2d3', '#ff6348', '#2ed573'];
+                portChart = new Chart(portCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: portLabels,
+                        datasets: [{
+                            data: portData,
+                            backgroundColor: portLabels.map((_, i) => colors[i % colors.length])
+                        }]
+                    },
+                    options: {
+                        onClick: (evt, elements) => {
+                            if (!elements.length) return;
+                            const i = elements[0].index;
+                            const keys = window._portChartKeys || [];
+                            const port = keys[i] != null ? keys[i] : portKeyFromChartLabel(portChart.data.labels[i]);
+                            showPortSliceModal(port);
+                        },
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+        
+        function showPortSliceModal(port) {
+            const pk = String(portKeyFromChartLabel(port));
+            const d = portDistributionDetail[pk];
+            const title = document.getElementById('portDetailTitle');
+            const body = document.getElementById('portDetailBody');
+            title.textContent = portLabelWithService(pk) + ' — details';
+            if (!d) {
+                body.innerHTML = '<p>No aggregated data for this slice.</p>';
+            } else {
+                const svcRows = Object.keys(d.services).map(s => '<tr><td>' + s + '</td><td>' + d.services[s] + '</td></tr>').join('');
+                body.innerHTML =
+                    '<p><strong>Times seen open:</strong> ' + d.count + '</p>' +
+                    '<p><strong>Risk levels:</strong> ' + (d.risks.length ? d.risks.join(', ') : '—') + '</p>' +
+                    '<p><strong>Targets scanned:</strong></p><ul>' + d.targets.map(t => '<li><code>' + t + '</code></li>').join('') + '</ul>' +
+                    '<p class="mb-1"><strong>Services observed</strong></p>' +
+                    '<table class="table table-sm"><thead><tr><th>Service</th><th>Count</th></tr></thead><tbody>' + svcRows + '</tbody></table>';
+            }
+            const modal = new bootstrap.Modal(document.getElementById('portDetailModal'));
+            modal.show();
+        }
+        
+        // Port scanner
+        document.getElementById('scan-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const data = {
+                target: document.getElementById('target').value,
+                port_range: document.getElementById('port-range').value,
+                scan_type: document.getElementById('scan-type').value,
+                threads: parseInt(document.getElementById('threads').value),
+                timeout: parseFloat(document.getElementById('timeout').value)
+            };
+            
+            const progressDiv = document.getElementById('scan-progress');
+            progressDiv.classList.add('active');
+            
+            try {
+                const response = await fetch('/api/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                currentScanId = result.scan_id;
+                
+                // Poll for results
+                pollScanResults(currentScanId);
+            } catch (error) {
+                console.error('Scan error:', error);
+                progressDiv.classList.remove('active');
+            }
+        });
+        
+        async function pollScanResults(scanId) {
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/scan-status/${scanId}`, { credentials: 'same-origin' });
+                    if (response.status === 401) {
+                        clearInterval(interval);
+                        window.location.href = '/login';
+                        return;
+                    }
+                    const data = await response.json();
+                    
+                    if (data.status === 'completed') {
+                        clearInterval(interval);
+                        document.getElementById('scan-progress').classList.remove('active');
+                        displayScanResults(data.result, data);
+                    } else {
+                        document.getElementById('scan-status').textContent = 
+                            `Scanning... Found ${data.open_ports || 0} open ports`;
+                    }
+                } catch (error) {
+                    clearInterval(interval);
+                    document.getElementById('scan-progress').classList.remove('active');
+                }
+            }, 2000);
+        }
+        
+        function displayScanResults(results, meta) {
+            const resultsDiv = document.getElementById('scan-results');
+            let html = '<table class="table table-striped"><thead><tr><th>Port</th><th>Protocol</th><th>Status</th><th>Risk</th><th>Service</th><th>Banner</th></tr></thead><tbody>';
+            
+            for (const [port, info] of Object.entries(results)) {
+                const risk = (info.risk || (info.open ? 'LOW' : '-')).toString();
+                let riskClass = 'risk-low';
+                if (risk === 'CRITICAL') riskClass = 'risk-critical';
+                else if (risk === 'HIGH') riskClass = 'risk-high';
+                else if (risk === 'MEDIUM') riskClass = 'risk-medium';
+                else if (risk === '-') riskClass = 'text-muted';
+                html += `
+                    <tr>
+                        <td>${port}</td>
+                        <td>${info.protocol || 'tcp'}</td>
+                        <td>${info.open ? '<span class="text-success">Open</span>' : '<span class="text-danger">Closed</span>'}</td>
+                        <td class="${riskClass}">${risk}</td>
+                        <td>${info.service || '-'}</td>
+                        <td><small>${(info.banner || '-').substring(0, 50)}</small></td>
+                    </tr>
+                `;
+            }
+            
+            html += '</tbody></table>';
+            resultsDiv.innerHTML = html;
+
+            if (meta && meta.alert_triggered && window.SecurityAlerts) {
+                const targetLabel = meta.target || document.getElementById('target').value;
+                const ports = [];
+                for (const [p, inf] of Object.entries(results || {})) {
+                    if (inf && inf.open && (inf.risk === 'CRITICAL' || inf.risk === 'HIGH')) {
+                        ports.push(p + '/' + (inf.service || '?'));
+                    }
+                }
+                window.SecurityAlerts.triggerCritical({
+                    title: 'Critical / high-risk services detected',
+                    body: 'Target ' + targetLabel + ' has exposed high-risk services: ' + (ports.join(', ') || 'see results table') + '.',
+                    durationMs: 16000
+                });
+            }
+        }
+        
+        // Network discovery
+        async function discoverNetwork() {
+            const network = document.getElementById('network-cidr').value;
+            const scanPorts = document.getElementById('scan-ports').checked;
+            
+            const resultsDiv = document.getElementById('network-results');
+            resultsDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> Discovering network...</div>';
+            
+            try {
+                const response = await fetch('/api/network-map', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ network, scan_ports: scanPorts })
+                });
+                
+                const data = await response.json();
+                displayNetworkResults(data);
+            } catch (error) {
+                resultsDiv.innerHTML = '<div class="alert alert-danger">Network discovery failed</div>';
+            }
+        }
+        
+        function displayNetworkResults(data) {
+            const resultsDiv = document.getElementById('network-results');
+            let html = `<h6>Found ${data.hosts_found} hosts</h6>`;
+            html += '<div class="table-responsive"><table class="table"><thead><tr><th>IP Address</th><th>Hostname</th><th>MAC Address</th><th>Vendor</th></tr></thead><tbody>';
+            
+            data.devices.forEach(device => {
+                html += `
+                    <tr>
+                        <td><code>${device.ip}</code></td>
+                        <td>${device.hostname || '-'}</td>
+                        <td>${device.mac}</td>
+                        <td>${device.vendor}</td>
+                    </tr>
+                `;
+                if (device.open_ports) {
+                    html += `<tr><td colspan="4"><small>Open ports: ${device.open_ports.join(', ')}</small></td></tr>`;
+                }
+            });
+            
+            html += '</tbody></table></div>';
+            resultsDiv.innerHTML = html;
+        }
+        
+        // Load reports
+        async function loadReports() {
+            const reportsDiv = document.getElementById('reports-list');
+            try {
+                const scans = await fetch('/api/reports?type=scans', { credentials: 'same-origin' }).then(r => r.json());
+                
+                let html = '<div class="list-group">';
+                scans.forEach(scan => {
+                    html += `
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>${scan.target}</strong><br>
+                                    <small>${new Date(scan.start_time).toLocaleString()}</small>
+                                </div>
+                                <div>
+                                    <span class="badge bg-primary">${scan.open_ports} open ports</span>
+                                    <button class="btn btn-sm btn-outline-primary ms-1" onclick="exportReportFormat(${scan.id}, 'json')">JSON</button>
+                                    <button class="btn btn-sm btn-outline-danger ms-1" onclick="exportReportFormat(${scan.id}, 'pdf')">PDF</button>
+                                    <button class="btn btn-sm btn-outline-success ms-1" onclick="exportReportFormat(${scan.id}, 'png')">PNG</button>
+                                    <button class="btn btn-sm btn-outline-secondary ms-1" onclick="exportReportFormat(${scan.id}, 'txt')">TXT</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                reportsDiv.innerHTML = html || '<div class="alert alert-info">No reports found</div>';
+            } catch (error) {
+                reportsDiv.innerHTML = '<div class="alert alert-danger">Error loading reports</div>';
+            }
+        }
+        
+        // Load vulnerabilities
+        async function loadVulnerabilities() {
+            const vulnsDiv = document.getElementById('vulnerabilities-list');
+            try {
+                const vulns = await fetch('/api/reports?type=vulnerabilities', { credentials: 'same-origin' }).then(r => r.json());
+                
+                let html = '<div class="list-group">';
+                vulns.forEach(vuln => {
+                    const sev = (vuln.severity || '').toString().toLowerCase();
+                    const severityClass = (sev === 'high' || sev === 'critical') ? 'severity-high' : 
+                                         sev === 'medium' ? 'severity-medium' : 'severity-low';
+                    const title = vuln.vulnerability || vuln.description || 'Exposure';
+                    const rec = vuln.recommendation || 'Review and harden this service.';
+                    html += `
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <strong>${vuln.host || '—'}:${vuln.port != null ? vuln.port : '—'}</strong>
+                                <span class="${severityClass}">${vuln.severity || '—'}</span>
+                            </div>
+                            <div>${title}</div>
+                            ${vuln.cve_id ? `<small class="text-muted">CVE: ${vuln.cve_id} ${vuln.cvss_score != null ? '· CVSS ' + vuln.cvss_score : ''}</small>` : ''}
+                            <div class="mt-2"><small><i class="fas fa-lightbulb"></i> ${rec}</small></div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                vulnsDiv.innerHTML = vulns.length ? html : '<div class="alert alert-info">No vulnerability records yet. Run a port scan — exposures are generated from open ports (CVE-style hints).</div>';
+            } catch (error) {
+                vulnsDiv.innerHTML = '<div class="alert alert-danger">Error loading vulnerabilities</div>';
+            }
+        }
+        
+        // Load profile
+        async function loadProfile() {
+            try {
+                const profile = await fetch('/api/profile', { credentials: 'same-origin' }).then(r => r.json());
+                document.getElementById('api-key').value = profile.api_key || '';
+                const prev = document.getElementById('profile-avatar-preview');
+                if (prev && profile.avatar_url) {
+                    prev.src = profile.avatar_url + '?t=' + Date.now();
+                    prev.style.display = 'inline-block';
+                } else if (prev) {
+                    prev.style.display = 'none';
+                }
+                
+                const profileDiv = document.getElementById('profile-info');
+                profileDiv.innerHTML = `
+                    <p><strong>Username:</strong> ${profile.username}</p>
+                    <p><strong>Email:</strong> ${profile.email}</p>
+                    <p><strong>Phone:</strong> ${profile.phone || 'Not set'}</p>
+                    <p><strong>Member since:</strong> ${profile.created_at ? new Date(profile.created_at).toLocaleDateString() : '—'}</p>
+                    <p><strong>Last login:</strong> ${profile.last_login ? new Date(profile.last_login).toLocaleString() : '—'}</p>
+                `;
+                await refreshUserBadge();
+            } catch (error) {
+                console.error('Error loading profile:', error);
+            }
+        }
+        
+        // Export report
+        async function exportReportFormat(scanId, fmt) {
+            try {
+                const url = '/api/export-report/' + scanId + '?format=' + encodeURIComponent(fmt);
+                const response = await fetch(url, { credentials: 'same-origin' });
+                if (response.status === 401) { window.location.href = '/login'; return; }
+                if (fmt === 'json') {
+                    const report = await response.json();
+                    if (report.error) { alert(report.error); return; }
+                    const dataStr = JSON.stringify(report, null, 2);
+                    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+                    const a = document.createElement('a');
+                    a.href = dataUri;
+                    a.download = 'scan_report_' + scanId + '.json';
+                    a.click();
+                    return;
+                }
+                const blob = await response.blob();
+                const ext = fmt === 'pdf' ? 'pdf' : (fmt === 'png' ? 'png' : 'txt');
+                const u = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = u;
+                a.download = 'scan_report_' + scanId + '.' + ext;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(u);
+            } catch (error) {
+                console.error('Export error:', error);
+                alert('Export failed');
+            }
+        }
+        
+        // Copy API key
+        function copyApiKey() {
+            const apiKey = document.getElementById('api-key');
+            apiKey.select();
+            document.execCommand('copy');
+            alert('API key copied to clipboard');
+        }
+        
+        // Regenerate API key
+        async function regenerateApiKey() {
+            if (!confirm('Generate a new API key? The old key will stop working.')) return;
+            try {
+                const r = await fetch('/api/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ regenerate_api_key: true })
+                });
+                const d = await r.json();
+                if (d.api_key) document.getElementById('api-key').value = d.api_key;
+                alert('New API key generated.');
+            } catch (e) { alert('Failed'); }
+        }
+        
+        // Change password
+        document.getElementById('change-password-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newPass = document.getElementById('new-password').value;
+            const confirmPass = document.getElementById('confirm-password').value;
+            
+            if (newPass !== confirmPass) {
+                alert('Passwords do not match');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ password: newPass })
+                });
+                
+                if (response.ok) {
+                    alert('Password updated successfully');
+                    e.target.reset();
+                }
+            } catch (error) {
+                alert('Error updating password');
+            }
+        });
+        
+        // Logout
+        function logout() {
+            window.location.href = '/logout';
+        }
+        
+        // Initialize dashboard
+        loadDashboard();
+    </script>
+</body>
+</html>

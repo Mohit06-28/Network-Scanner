@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Port Scanner - Network Security Scanner</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="manifest" href="/static/manifest.webmanifest">
+    <meta name="theme-color" content="#dc3545">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="/static/css/security-alerts.css">
+    <style>
+        body {
+            background: #f5f5f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 260px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-menu {
+            padding: 20px 0;
+        }
+        
+        .sidebar-menu-item {
+            padding: 12px 25px;
+            margin: 5px 0;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .sidebar-menu-item:hover, .sidebar-menu-item.active {
+            background: rgba(102, 126, 234, 0.3);
+            border-left: 4px solid #667eea;
+        }
+        
+        .sidebar-menu-item i {
+            width: 30px;
+            margin-right: 10px;
+        }
+        
+        .main-content {
+            margin-left: 260px;
+            padding: 20px;
+        }
+        
+        .scan-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .progress-container {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            z-index: 2000;
+            min-width: 400px;
+            text-align: center;
+        }
+        
+        .progress-container.active {
+            display: block;
+        }
+        
+        .results-table {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .port-open {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .port-closed {
+            color: #dc3545;
+        }
+        
+        .port-filtered {
+            color: #ffc107;
+        }
+        
+        .badge-service {
+            background: #667eea;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+
+        .risk-critical { color: #ff4d4d; font-weight: 800; }
+        .risk-high { color: #ff922b; font-weight: 700; }
+        .risk-medium { color: #ffc107; font-weight: 600; }
+        .risk-low { color: #51cf66; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h3><i class="fas fa-shield-alt"></i> NetSec</h3>
+            <small>Security Scanner</small>
+        </div>
+        <div class="sidebar-menu">
+            <div class="sidebar-menu-item" onclick="location.href='/dashboard'">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </div>
+            <div class="sidebar-menu-item active" onclick="location.href='/scanner'">
+                <i class="fas fa-search"></i> Port Scanner
+            </div>
+            <div class="sidebar-menu-item" onclick="location.href='/network-map'">
+                <i class="fas fa-network-wired"></i> Network Map
+            </div>
+            <div class="sidebar-menu-item" onclick="location.href='/reports'">
+                <i class="fas fa-chart-line"></i> Reports
+            </div>
+            <div class="sidebar-menu-item" onclick="location.href='/profile'">
+                <i class="fas fa-user"></i> Profile
+            </div>
+            <div class="sidebar-menu-item" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="scan-card">
+            <h3><i class="fas fa-search"></i> Advanced Port Scanner</h3>
+            <hr>
+            
+            <form id="scanForm">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Target IP / Hostname</label>
+                            <input type="text" class="form-control" id="target" 
+                                   placeholder="192.168.1.1 or example.com" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Port Range</label>
+                            <input type="text" class="form-control" id="portRange" 
+                                   value="1-1000" placeholder="1-1000 or 80,443,8080">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Scan Type</label>
+                            <select class="form-control" id="scanType">
+                                <option value="tcp">TCP Connect Scan</option>
+                                <option value="syn">SYN Scan (Stealth)</option>
+                                <option value="udp">UDP Scan</option>
+                                <option value="fin">FIN Scan</option>
+                                <option value="null">NULL Scan</option>
+                                <option value="xmas">XMAS Scan</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Threads</label>
+                            <input type="number" class="form-control" id="threads" value="100" min="1" max="500">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Timeout (seconds)</label>
+                            <input type="number" class="form-control" id="timeout" value="1" step="0.5" min="0.5" max="10">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label class="form-label">Quick Presets</label>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setPreset('common')">
+                                    Common Ports
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setPreset('web')">
+                                    Web Servers
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setPreset('database')">
+                                    Databases
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setPreset('all')">
+                                    All Ports
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-play"></i> Start Scan
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearResults()">
+                    <i class="fas fa-trash"></i> Clear Results
+                </button>
+            </form>
+        </div>
+        
+        <div class="scan-card" id="resultsCard" style="display: none;">
+            <h4><i class="fas fa-chart-bar"></i> Scan Results</h4>
+            <div id="scanSummary" class="alert alert-info"></div>
+            <div id="resultsTable" class="results-table"></div>
+            <div class="mt-3">
+                <button class="btn btn-success" onclick="exportResults()">
+                    <i class="fas fa-download"></i> Export Results
+                </button>
+                <button class="btn btn-danger" onclick="checkVulnerabilities()">
+                    <i class="fas fa-bug"></i> Check Vulnerabilities
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="progressContainer" class="progress-container">
+        <h4><i class="fas fa-spinner fa-spin"></i> Scanning in Progress</h4>
+        <div class="progress mt-3">
+            <div id="scanProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                 style="width: 0%">0%</div>
+        </div>
+        <p class="mt-3" id="scanStatus">Initializing scan...</p>
+        <div id="scanStats" class="text-muted"></div>
+    </div>
+    
+    <script src="/static/js/security-alerts.js"></script>
+    <script src="/static/js/pwa-register.js"></script>
+    <script>
+        let currentScanId = null;
+        let scanResults = null;
+        
+        // Preset configurations
+        const presets = {
+            common: '21,22,23,25,53,80,110,111,135,139,143,443,445,993,995,1723,3306,3389,5432,5900,6379,8080,27017',
+            web: '80,81,82,83,84,85,86,87,88,89,443,8080,8081,8082,8083,8084,8085,8086,8087,8088,8089,8443,9443',
+            database: '1433,1434,3306,3307,5432,5433,6379,6380,27017,27018,27019',
+            all: '1-65535'
+        };
+        
+        function setPreset(preset) {
+            document.getElementById('portRange').value = presets[preset];
+        }
+        
+        // Form submission
+        document.getElementById('scanForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const data = {
+                target: document.getElementById('target').value,
+                port_range: document.getElementById('portRange').value,
+                scan_type: document.getElementById('scanType').value,
+                threads: parseInt(document.getElementById('threads').value),
+                timeout: parseFloat(document.getElementById('timeout').value)
+            };
+            
+            // Validate target
+            if (!data.target) {
+                alert('Please enter a target IP or hostname');
+                return;
+            }
+            
+            // Show progress
+            const progressDiv = document.getElementById('progressContainer');
+            progressDiv.classList.add('active');
+            
+                try {
+                    const response = await fetch('/api/scan', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify(data)
+                    });
+                    
+                    if (response.status === 401) {
+                        window.location.href = '/login';
+                        return;
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                    // Start polling for results
+                    pollForResults(result.scan_id);
+                } else {
+                    throw new Error(result.error || 'Scan failed');
+                }
+            } catch (error) {
+                alert('Scan error: ' + error.message);
+                progressDiv.classList.remove('active');
+            }
+        });
+        
+        async function pollForResults(scanId) {
+            let attempts = 0;
+            const maxAttempts = 300; // 5 minutes max
+            
+            const interval = setInterval(async () => {
+                attempts++;
+                
+                try {
+                    const response = await fetch(`/api/scan-status/${scanId}`, { credentials: 'same-origin' });
+                    if (response.status === 401) {
+                        clearInterval(interval);
+                        window.location.href = '/login';
+                        return;
+                    }
+                    const data = await response.json();
+                    
+                    if (data.status === 'completed') {
+                        clearInterval(interval);
+                        document.getElementById('progressContainer').classList.remove('active');
+                        displayResults(data);
+                    } else if (data.status === 'failed') {
+                        clearInterval(interval);
+                        document.getElementById('progressContainer').classList.remove('active');
+                        alert('Scan failed');
+                    } else {
+                        // Update progress
+                        const progress = Math.min(100, Math.floor((data.open_ports || 0) / (data.total_ports || 1) * 100));
+                        document.getElementById('scanProgressBar').style.width = `${progress}%`;
+                        document.getElementById('scanProgressBar').textContent = `${progress}%`;
+                        document.getElementById('scanStatus').textContent = `Scanning... Found ${data.open_ports || 0} open ports`;
+                        document.getElementById('scanStats').textContent = `Progress: ${data.scanned_ports || 0} / ${data.total_ports || 0} ports`;
+                    }
+                    
+                    if (attempts >= maxAttempts) {
+                        clearInterval(interval);
+                        document.getElementById('progressContainer').classList.remove('active');
+                        alert('Scan timeout');
+                    }
+                } catch (error) {
+                    console.error('Polling error:', error);
+                }
+            }, 1000);
+        }
+        
+        function displayResults(data) {
+            scanResults = data.result;
+            const resultsCard = document.getElementById('resultsCard');
+            const summaryDiv = document.getElementById('scanSummary');
+            const resultsDiv = document.getElementById('resultsTable');
+            
+            // Calculate statistics
+            const openPorts = Object.values(data.result).filter(p => p.open).length;
+            const closedPorts = Object.values(data.result).filter(p => !p.open).length;
+            const targetLabel = data.target || document.getElementById('target').value;
+            const scanTypeLabel = data.scan_type || document.getElementById('scanType').value;
+            let durationSec = 0;
+            if (data.start_time && data.end_time) {
+                durationSec = (new Date(data.end_time) - new Date(data.start_time)) / 1000;
+            }
+            
+            summaryDiv.innerHTML = `
+                <strong>Scan Summary:</strong><br>
+                Target: ${targetLabel}<br>
+                Scan Type: ${scanTypeLabel}<br>
+                Open Ports: ${openPorts}<br>
+                Closed/Filtered Ports: ${closedPorts}<br>
+                High / critical findings: ${data.high_risk_count != null ? data.high_risk_count : '-'}<br>
+                Duration: ${durationSec > 0 ? durationSec.toFixed(2) + ' seconds' : 'n/a'}
+            `;
+            
+            // Build results table
+            let html = '<table class="table table-striped table-hover">';
+            html += '<thead><tr>';
+            html += '<th>Port</th><th>Protocol</th><th>Status</th><th>Risk</th><th>Service</th><th>Banner</th>';
+            html += '</tr></thead><tbody>';
+            
+            for (const [port, info] of Object.entries(data.result)) {
+                let statusClass = '';
+                let statusText = '';
+                
+                if (info.open === true) {
+                    statusClass = 'port-open';
+                    statusText = 'OPEN';
+                } else if (info.open === false) {
+                    statusClass = 'port-closed';
+                    statusText = 'CLOSED';
+                } else {
+                    statusClass = 'port-filtered';
+                    statusText = 'FILTERED';
+                }
+                
+                const risk = (info.risk || (info.open ? 'LOW' : '-')).toString();
+                let riskClass = 'risk-low';
+                if (risk === 'CRITICAL') riskClass = 'risk-critical';
+                else if (risk === 'HIGH') riskClass = 'risk-high';
+                else if (risk === 'MEDIUM') riskClass = 'risk-medium';
+                else if (risk === '-' || risk === 'LOW') riskClass = risk === '-' ? 'text-muted' : 'risk-low';
+                
+                html += `
+                    <tr>
+                        <td><strong>${port}</strong></td>
+                        <td>${info.protocol || 'tcp'}</td>
+                        <td class="${statusClass}">${statusText}</td>
+                        <td class="${riskClass}">${risk}</td>
+                        <td>${info.service ? `<span class="badge-service">${info.service}</span>` : '-'}</td>
+                        <td><small>${(info.banner || '-').substring(0, 50)}</small></td>
+                    </tr>
+                `;
+            }
+            
+            html += '</tbody></table>';
+            resultsDiv.innerHTML = html;
+            resultsCard.style.display = 'block';
+
+            if (data.alert_triggered && window.SecurityAlerts) {
+                var ports = [];
+                for (const [p, inf] of Object.entries(data.result || {})) {
+                    if (inf && inf.open && (inf.risk === 'CRITICAL' || inf.risk === 'HIGH')) {
+                        ports.push(p + '/' + (inf.service || '?'));
+                    }
+                }
+                window.SecurityAlerts.triggerCritical({
+                    title: 'Critical / high-risk services detected',
+                    body: 'Target ' + targetLabel + ' has exposed high-risk services: ' + (ports.join(', ') || 'see table') +
+                        '. Harden firewall rules, disable unused services, and patch immediately.',
+                    durationMs: 16000
+                });
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('resultsCard').style.display = 'none';
+            document.getElementById('scanForm').reset();
+            document.getElementById('portRange').value = '1-1000';
+            scanResults = null;
+        }
+        
+        function exportResults() {
+            if (!scanResults) {
+                alert('No results to export');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(scanResults, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            const exportFileName = `scan_${document.getElementById('target').value}_${Date.now()}.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileName);
+            linkElement.click();
+        }
+        
+        async function checkVulnerabilities() {
+            if (!scanResults) {
+                alert('No scan results to analyze');
+                return;
+            }
+            
+            alert('Vulnerability check feature - This would query CVE database for known vulnerabilities');
+            // Implement vulnerability checking API call here
+        }
+        
+        function logout() {
+            window.location.href = '/logout';
+        }
+    </script>
+</body>
+</html>

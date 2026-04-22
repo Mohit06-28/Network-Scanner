@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Network Security Scanner</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="manifest" href="/static/manifest.webmanifest">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .login-container {
+            max-width: 450px;
+            margin: 100px auto;
+        }
+        
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .form-control {
+            border-radius: 10px;
+            padding: 12px 15px;
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+        
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102,126,234,0.25);
+        }
+        
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            font-weight: 600;
+            color: white;
+            width: 100%;
+            transition: transform 0.3s;
+        }
+        
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102,126,234,0.4);
+        }
+        
+        .method-switch {
+            cursor: pointer;
+            padding: 10px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .method-switch.active {
+            border-bottom: 3px solid #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .method-switch:hover {
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="login-container">
+            <div class="login-card">
+                <div class="text-center mb-4">
+                    <i class="fas fa-shield-alt fa-3x" style="color: #667eea;"></i>
+                    <h3 class="mt-3">Welcome Back</h3>
+                    <p class="text-muted">Login to Network Security Scanner</p>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-6">
+                        <div class="method-switch active" data-method="email">
+                            <i class="fas fa-envelope"></i> Email
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="method-switch" data-method="phone">
+                            <i class="fas fa-phone"></i> Phone
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="loginForm">
+                    <div class="mb-3" id="emailField">
+                        <label class="form-label">
+                            <i class="fas fa-envelope"></i> Email Address
+                        </label>
+                        <input type="email" class="form-control" id="identifier" 
+                               placeholder="you@example.com" required>
+                    </div>
+                    
+                    <div class="mb-3" id="phoneField" style="display: none;">
+                        <label class="form-label">
+                            <i class="fas fa-phone"></i> Phone Number
+                        </label>
+                        <input type="tel" class="form-control" id="phoneIdentifier" 
+                               placeholder="+1234567890">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-lock"></i> Password
+                        </label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="password" required>
+                            <button class="btn btn-outline-secondary" type="button" id="loginTogglePwd" title="Show/hide password" aria-label="Toggle password visibility"><i class="far fa-eye" id="loginTogglePwdIcon"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember">
+                        <label class="form-check-label">Remember me</label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-login">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </button>
+                </form>
+                
+                <hr class="my-4">
+                
+                <div class="text-center">
+                    <a href="/forgot-password">Forgot Password?</a>
+                </div>
+                
+                <div class="text-center mt-3">
+                    <p class="mb-0">Don't have an account? 
+                        <a href="/register">Register here</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentMethod = 'email';
+        
+        document.getElementById('loginTogglePwd').addEventListener('click', function () {
+            var inp = document.getElementById('password');
+            var ic = document.getElementById('loginTogglePwdIcon');
+            if (inp.type === 'password') {
+                inp.type = 'text';
+                ic.className = 'far fa-eye-slash';
+            } else {
+                inp.type = 'password';
+                ic.className = 'far fa-eye';
+            }
+        });
+        
+        // Method switching
+        document.querySelectorAll('.method-switch').forEach(switchBtn => {
+            switchBtn.addEventListener('click', function() {
+                document.querySelectorAll('.method-switch').forEach(s => s.classList.remove('active'));
+                this.classList.add('active');
+                
+                currentMethod = this.dataset.method;
+                
+                if (currentMethod === 'email') {
+                    document.getElementById('emailField').style.display = 'block';
+                    document.getElementById('phoneField').style.display = 'none';
+                    document.getElementById('identifier').required = true;
+                    document.getElementById('phoneIdentifier').required = false;
+                } else {
+                    document.getElementById('emailField').style.display = 'none';
+                    document.getElementById('phoneField').style.display = 'block';
+                    document.getElementById('identifier').required = false;
+                    document.getElementById('phoneIdentifier').required = true;
+                }
+            });
+        });
+        
+        // Form submission
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const identifier = currentMethod === 'email' 
+                ? document.getElementById('identifier').value
+                : document.getElementById('phoneIdentifier').value;
+            const password = document.getElementById('password').value;
+            
+            if (!identifier || !password) {
+                alert('Please enter both identifier and password');
+                return;
+            }
+            
+            // Show loading
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+            
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ identifier, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.username) localStorage.setItem('username', data.username);
+                    if (data.api_key) localStorage.setItem('api_key', data.api_key);
+                    window.location.href = data.redirect || '/dashboard';
+                } else {
+                    alert(data.error || 'Login failed');
+                }
+            } catch (error) {
+                alert('Login error: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/pwa-register.js"></script>
+</body>
+</html>

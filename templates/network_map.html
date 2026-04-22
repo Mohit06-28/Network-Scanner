@@ -1,0 +1,228 @@
+import ipaddress
+import subprocess
+import platform
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import socket
+
+try:
+    import scapy.all as scapy
+    SCAPY_AVAILABLE = True
+except ImportError:
+    SCAPY_AVAILABLE = False
+    print("Warning: Scapy not available. Network mapping will be limited.")
+
+try:
+    import nmap
+    NMAP_AVAILABLE = True
+except ImportError:
+    NMAP_AVAILABLE = False
+    print("Warning: python-nmap not available. Advanced scanning will be limited.")
+
+class NetworkMapper:
+    def __init__(self):
+        self.nm = nmap.PortScanner() if NMAP_AVAILABLE else None
+        
+    def discover_hosts(self, network_cidr):
+        """Discover all hosts in network using multiple methods"""
+        try:
+            network = ipaddress.ip_network(network_cidr, strict=False)
+        except Exception as e:
+            print(f"Invalid network CIDR: {e}")
+            return []
+        
+        hosts = []
+        
+        print(f"Discovering hosts in {network_cidr}")
+        
+        # Method 1: ARP scan (most reliable for local network)
+        if SCAPY_AVAILABLE:
+            arp_hosts = self.arp_scan(str(network))
+        else:
+            arp_hosts = {}
+        
+        # Method 2: ICMP ping sweep
+        icmp_hosts = self.icmp_sweep(network)
+        
+        # Method 3: TCP SYN ping on common ports
+        tcp_hosts = self.tcp_syn_ping(network)
+        
+        # Combine results
+        all_ips = set(arp_hosts.keys()) | set(icmp_hosts) | set(tcp_hosts)
+        
+        for ip in all_ips:
+            host_info = {
+                'ip': ip,
+                'alive': True,
+                'hostname': self.get_hostname(ip),
+                'mac': arp_hosts.get(ip, {}).get('mac', 'Unknown'),
+                'vendor': arp_hosts.get(ip, {}).get('vendor', 'Unknown'),
+                'discovery_methods': []
+            }
+            
+            if ip in arp_hosts:
+                host_info['discovery_methods'].append('ARP')
+            if ip in icmp_hosts:
+                host_info['discovery_methods'].append('ICMP')
+            if ip in tcp_hosts:
+                host_info['discovery_methods'].append('TCP')
+                
+            hosts.append(host_info)
+        
+        return hosts
+    
+    def arp_scan(self, network):
+        """ARP scan using Scapy"""
+        if not SCAPY_AVAILABLE:
+            return {}
+            
+        try:
+            arp_request = scapy.ARP(pdst=network)
+            broadcast = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
+            arp_request_broadcast = broadcast / arp_request
+            
+            answered_list = scapy.srp(arp_request_broadcast, timeout=2, verbose=0)[0]
+            
+            hosts = {}
+            for element in answered_list:
+                ip = element[1].psrc
+                mac = element[1].hwsrc
+                vendor = self.get_vendor(mac)
+                hosts[ip] = {'mac': mac, 'vendor': vendor}
+            
+            return hosts
+        except Exception as e:
+            print(f"ARP scan error: {e}")
+            return {}
+    
+    def icmp_sweep(self, network):
+        """ICMP echo request sweep"""
+        alive_hosts = []
+        
+        def ping_host(ip):
+            param = '-n' if platform.system().lower() == 'windows' else '-c'
+            command = ['ping', param, '1', str(ip)]
+            try:
+                result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
+                return str(ip) if result.returncode == 0 else None
+            except:
+                return None
+        
+        with ThreadPoolExecutor(max_workers=50) as executor:
+            futures = {executor.submit(ping_host, ip): ip for ip in network.hosts()}
+            
+            for future in as_completed(futures):
+                result = future.result()
+                if result:
+                    alive_hosts.append(result)
+        
+        return alive_hosts
+    
+    def tcp_syn_ping(self, network):
+        """TCP SYN ping on common ports (80, 443, 22)"""
+        if not SCAPY_AVAILABLE:
+            return set()
+            
+        alive_hosts = set()
+        common_ports = [80, 443, 22, 25, 53]
+        
+        def check_port(ip, port):
+            try:
+                syn_packet = IP(dst=str(ip))/TCP(dport=port, flags='S')
+                response = scapy.sr1(syn_packet, timeout=1, verbose=0)
+                
+                if response and response.haslayer(TCP):
+                    if response.getlayer(TCP).flags == 0x12:  # SYN-ACK
+                        return True
+            except:
+                pass
+            return False
+        
+        for ip in network.hosts():
+            for port in common_ports:
+                if check_port(ip, port):
+                    alive_hosts.add(str(ip))
+                    break
+        
+        return alive_hosts
+    
+    def get_hostname(self, ip):
+        """Resolve hostname from IP"""
+        try:
+            hostname = socket.gethostbyaddr(str(ip))[0]
+            return hostname
+        except:
+            return None
+    
+    def get_vendor(self, mac):
+        """Get vendor from MAC address OUI"""
+        # Simplified OUI lookup
+        mac_upper = mac.upper() if mac else ""
+        oui = mac_upper[:8] if len(mac_upper) >= 8 else mac_upper
+        
+        vendors = {
+            '00:00:0C': 'Cisco',
+            '00:01:5C': 'D-Link',
+            '00:04:5A': 'Netgear',
+            '00:0C:29': 'VMware',
+            '00:14:22': 'Dell',
+            '00:16:3E': 'Xen',
+            '00:1A:11': 'Samsung',
+            '00:1C:42': 'Intel',
+            '00:1E:37': 'HP',
+            '00:1F:5B': 'Raspberry Pi',
+            '00:23:12': 'Apple',
+            '00:25:9C': 'Huawei',
+            '00:50:56': 'VMware',
+            '08:00:27': 'Oracle',
+            '28:C2:1F': 'Intel',
+            '30:9C:23': 'Samsung',
+            '34:17:EB': 'TP-Link',
+            '44:32:C8': 'Apple',
+            '50:2B:73': 'Xiaomi',
+            '70:85:C2': 'Google',
+            '80:86:F2': 'Amazon',
+            '94:DE:80': 'Nest',
+            'B8:27:EB': 'Raspberry Pi',
+            'C0:25:06': 'Amazon',
+            'E0:55:3D': 'Apple'
+        }
+        return vendors.get(oui, 'Unknown')
+    
+    def get_network_topology(self, hosts):
+        """Analyze network topology"""
+        topology = {
+            'gateway': self.find_gateway(),
+            'routers': [],
+            'switches': [],
+            'devices': [],
+            'segments': []
+        }
+        
+        for host in hosts:
+            # Identify potential routers (multiple interfaces or specific services)
+            if host.get('open_ports'):
+                if 53 in host.get('open_ports', []) or 67 in host.get('open_ports', []):
+                    topology['routers'].append(host)
+            
+            # Categorize devices by MAC vendor
+            vendor = host.get('vendor', 'Unknown')
+            if vendor in ['Cisco', 'Juniper', 'Huawei']:
+                topology['routers'].append(host)
+            elif vendor in ['D-Link', 'Netgear', 'TP-Link']:
+                topology['switches'].append(host)
+            else:
+                topology['devices'].append(host)
+        
+        return topology
+    
+    def find_gateway(self):
+        """Find network gateway"""
+        try:
+            if platform.system().lower() == 'windows':
+                result = subprocess.run(['ipconfig'], capture_output=True, text=True, timeout=5)
+                for line in result.stdout.split('\n'):
+                    if 'Default Gateway' in line and line.strip():
+                        parts = line.split(':')
+                        if len(parts) > 1:
+                            gateway = parts[1].strip()
+                            if gateway and gateway != '

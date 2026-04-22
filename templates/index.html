@@ -1,1 +1,665 @@
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Security Scanner - Professional Network Analysis Tool</title>
+    <link rel="manifest" href="/static/manifest.webmanifest">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --dark: #1a1a2e;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+            overflow-y: auto;
+        }
+        
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 100px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="rgba(255,255,255,0.1)" fill-opacity="1" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,122.7C672,117,768,139,864,154.7C960,171,1056,181,1152,165.3C1248,149,1344,107,1392,85.3L1440,64L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>') no-repeat bottom;
+            background-size: cover;
+            opacity: 0.3;
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Feature Cards */
+        .feature-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+        
+        .feature-icon i {
+            font-size: 35px;
+            color: white;
+        }
+        
+        /* Stats Section */
+        .stats-section {
+            background: var(--dark);
+            color: white;
+            padding: 60px 0;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 48px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        
+        /* CTA Section */
+        .cta-section {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 80px 0;
+            text-align: center;
+        }
+        
+        .btn-cta {
+            background: white;
+            color: var(--primary);
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .btn-cta:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        /* Navbar */
+        .navbar {
+            background: rgba(255,255,255,0.95);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+        
+        .nav-link {
+            color: var(--dark);
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .nav-link:hover {
+            color: var(--primary);
+        }
+        
+        /* Footer */
+        .footer {
+            background: var(--dark);
+            color: white;
+            padding: 50px 0 20px;
+        }
+        
+        .footer a {
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .footer a:hover {
+            color: white;
+        }
+        
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .animate {
+            animation: fadeInUp 0.6s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/">
+                <i class="fas fa-shield-alt" style="color: var(--primary);"></i>
+                NetSec Scanner
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#features">Features</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#how-it-works">How It Works</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#pricing">Pricing</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-primary ms-2" href="/register" style="border-radius: 25px;">
+                            <i class="fas fa-user-plus"></i> Sign Up
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container hero-content">
+            <div class="row align-items-center">
+                <div class="col-lg-6 animate">
+                    <h1 class="display-4 fw-bold mb-4">
+                        Professional Network Security Scanner
+                    </h1>
+                    <p class="lead mb-4">
+                        Advanced port scanning, network mapping, and vulnerability assessment 
+                        tool for security professionals and system administrators.
+                    </p>
+                    <div class="d-flex gap-3">
+                        <a href="/register" class="btn btn-light btn-lg">
+                            <i class="fas fa-rocket"></i> Get Started Free
+                        </a>
+                        <a href="#features" class="btn btn-outline-light btn-lg">
+                            <i class="fas fa-play"></i> Watch Demo
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-6 animate">
+                    <img src="https://via.placeholder.com/500x400?text=Network+Security+Visualization" 
+                         alt="Network Security" class="img-fluid rounded-4 shadow">
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Features Section -->
+    <section id="features" class="py-5">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="display-5 fw-bold">Powerful Features</h2>
+                <p class="lead text-muted">Everything you need for comprehensive network security analysis</p>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <h4>Advanced Port Scanning</h4>
+                        <p class="text-muted">
+                            TCP, SYN, UDP, FIN, NULL, and XMAS scan types with 
+                            multi-threading for lightning-fast results.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-network-wired"></i>
+                        </div>
+                        <h4>Network Mapping</h4>
+                        <p class="text-muted">
+                            Automatic network discovery with ARP, ICMP, and TCP ping 
+                            methods. Visual network topology mapping.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-bug"></i>
+                        </div>
+                        <h4>Vulnerability Assessment</h4>
+                        <p class="text-muted">
+                            CVE database integration, service version detection, 
+                            and automated vulnerability scanning.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h4>Comprehensive Reports</h4>
+                        <p class="text-muted">
+                            Generate detailed PDF/JSON reports with risk scoring, 
+                            compliance checking, and remediation recommendations.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h4>Scheduled Scans</h4>
+                        <p class="text-muted">
+                            Automate security assessments with scheduled scans 
+                            and email notifications.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <h4>Enterprise Security</h4>
+                        <p class="text-muted">
+                            Two-factor authentication, API access, role-based 
+                            access control, and audit logging.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Stats Section -->
+    <section class="stats-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-3 stat-item">
+                    <div class="stat-number" id="scansCount">0</div>
+                    <p>Scans Completed</p>
+                </div>
+                <div class="col-md-3 stat-item">
+                    <div class="stat-number" id="portsCount">0</div>
+                    <p>Ports Scanned</p>
+                </div>
+                <div class="col-md-3 stat-item">
+                    <div class="stat-number" id="vulnsCount">0</div>
+                    <p>Vulnerabilities Found</p>
+                </div>
+                <div class="col-md-3 stat-item">
+                    <div class="stat-number" id="usersCount">0</div>
+                    <p>Happy Users</p>
+                </div>
+                <div class="col-12 text-center mt-2"><small class="text-white-50" id="statsLiveHint">Live totals from the platform database</small></div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Rating -->
+    <section class="py-5 bg-light">
+        <div class="container text-center">
+            <h3 class="mb-3">Rate NetSec Scanner</h3>
+            <p class="text-muted mb-3">Your feedback helps us improve security tooling for everyone.</p>
+            <div class="mb-2" id="ratingStars">
+                <button type="button" class="btn btn-link text-warning fs-3 p-1 rating-star" data-value="1" aria-label="1 star"><i class="far fa-star"></i></button>
+                <button type="button" class="btn btn-link text-warning fs-3 p-1 rating-star" data-value="2" aria-label="2 stars"><i class="far fa-star"></i></button>
+                <button type="button" class="btn btn-link text-warning fs-3 p-1 rating-star" data-value="3" aria-label="3 stars"><i class="far fa-star"></i></button>
+                <button type="button" class="btn btn-link text-warning fs-3 p-1 rating-star" data-value="4" aria-label="4 stars"><i class="far fa-star"></i></button>
+                <button type="button" class="btn btn-link text-warning fs-3 p-1 rating-star" data-value="5" aria-label="5 stars"><i class="far fa-star"></i></button>
+            </div>
+            <p class="small text-muted mb-2" id="ratingSelected">Tap stars to rate (1–5)</p>
+            <textarea class="form-control mx-auto mb-2" style="max-width:480px" id="ratingComment" rows="2" placeholder="Optional comment (max 500 chars)"></textarea>
+            <button type="button" class="btn btn-primary" id="submitRatingBtn">Submit rating</button>
+            <p class="small mt-2 text-success" id="ratingMsg" style="display:none;"></p>
+        </div>
+    </section>
+    
+    <!-- How It Works -->
+    <section id="how-it-works" class="py-5">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="display-5 fw-bold">How It Works</h2>
+                <p class="lead text-muted">Simple three-step process to secure your network</p>
+            </div>
+            <div class="row">
+                <div class="col-md-4 text-center">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" 
+                         style="width: 80px; height: 80px;">
+                        <h2 class="mb-0">1</h2>
+                    </div>
+                    <h4>Configure Scan</h4>
+                    <p class="text-muted">
+                        Set your target IP range, select scan type, 
+                        and configure advanced options.
+                    </p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" 
+                         style="width: 80px; height: 80px;">
+                        <h2 class="mb-0">2</h2>
+                    </div>
+                    <h4>Run Analysis</h4>
+                    <p class="text-muted">
+                        Our engine performs comprehensive scanning 
+                        with real-time progress updates.
+                    </p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" 
+                         style="width: 80px; height: 80px;">
+                        <h2 class="mb-0">3</h2>
+                    </div>
+                    <h4>Review Results</h4>
+                    <p class="text-muted">
+                        Get detailed reports with actionable insights 
+                        and remediation steps.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Pricing Section -->
+    <section id="pricing" class="py-5 bg-light">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="display-5 fw-bold">Simple Pricing</h2>
+                <p class="lead text-muted">Choose the plan that fits your needs</p>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-lg">
+                        <div class="card-body text-center p-4">
+                            <h3>Free</h3>
+                            <div class="display-4 fw-bold text-primary">$0</div>
+                            <p class="text-muted">per month</p>
+                            <hr>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="fas fa-check text-success"></i> 5 scans/month</li>
+                                <li class="mb-2"><i class="fas fa-check text-success"></i> Basic port scanning</li>
+                                <li class="mb-2"><i class="fas fa-check text-success"></i> Email reports</li>
+                                <li class="mb-2"><i class="fas fa-times text-danger"></i> Advanced scans</li>
+                                <li class="mb-2"><i class="fas fa-times text-danger"></i> API access</li>
+                            </ul>
+                            <a href="/register" class="btn btn-outline-primary w-100">Get Started</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-lg border-primary">
+                        <div class="card-header bg-primary text-white text-center py-3">
+                            <h4 class="mb-0">Most Popular</h4>
+                        </div>
+                        <div class="card-body text-center p-4">
+                            <h3>Pro</h3>
+                            <div class="display-4 fw-bold text-primary">$29</div>
+                            <p class="text-muted">per month</p>
+                            <hr>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="fas fa-check text-success"></i> Unlimited scans</li>
+                                <li class="mb-2"><i class="fas fa-check text-success"></i> All scan types</li>
+                                <li class="mb-2"><i class="fas fa-check text-success"></i> Vulnerability assessment</li>
+                                <li class="mb-2"><i class="fas fa-check text-success"></i> API access</li>
+                                <li class="mb-2"><i class="fas fa-check text-success"></i> Priority support</li>
+                            </ul>
+                            <a href="/register" class="btn btn-primary w-100">Start Free Trial</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-lg">
+                        <div class="card-body text-center p-4">
+                            <h3>Enterprise</h3>
+                            <div class="display-4 fw-bold text-primary">Custom</div>
+                            <p class="text-muted">Contact us</p>
+                            <hr>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="fas fa-check text-success"></i> Everything in Pro</li>
+                                <li class="mb-2"><i class="fas fa-check text-success"></i> On-premise deployment</li>
+                                <li class="mb-2"><i class="fas fa-check text-success"></i> 24/7 phone support</li>
+                                <li class="mb-2"><i class="fas fa-check text-success"></i> Custom integrations</li>
+                                <li class="mb-2"><i class="fas fa-check text-success"></i> SLA agreement</li>
+                            </ul>
+                            <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#enterpriseModal">Contact Sales</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <h2 class="display-5 fw-bold mb-4">Ready to Secure Your Network?</h2>
+            <p class="lead mb-4">Join thousands of security professionals using our platform</p>
+            <a href="/register" class="btn btn-cta">
+                <i class="fas fa-rocket"></i> Get Started Now
+            </a>
+        </div>
+    </section>
+    
+    <!-- Footer -->
+    <div class="modal fade" id="enterpriseModal" tabindex="-1" aria-labelledby="enterpriseModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="enterpriseModalLabel">Enterprise — contact sales</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">Tell us about your deployment needs. We respond in one business day.</p>
+                    <div class="mb-2">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" id="entName" placeholder="Your name">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Work email *</label>
+                        <input type="email" class="form-control" id="entEmail" required placeholder="you@company.com">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Company</label>
+                        <input type="text" class="form-control" id="entCompany" placeholder="Organization">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Message</label>
+                        <textarea class="form-control" id="entMessage" rows="3" placeholder="Users, regions, compliance (SOC2, etc.)"></textarea>
+                    </div>
+                    <p class="text-success small" id="entSuccess" style="display:none;"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="entSubmitBtn">Send inquiry</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <h5><i class="fas fa-shield-alt"></i> NetSec Scanner</h5>
+                    <p>Professional network security scanning and vulnerability assessment platform.</p>
+                    <div class="mt-3">
+                        <a href="#" class="me-3"><i class="fab fa-twitter fa-lg"></i></a>
+                        <a href="#" class="me-3"><i class="fab fa-linkedin fa-lg"></i></a>
+                        <a href="#" class="me-3"><i class="fab fa-github fa-lg"></i></a>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-4">
+                    <h6>Product</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#pricing">Pricing</a></li>
+                        <li><a href="#">Documentation</a></li>
+                        <li><a href="#">API Reference</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-2 mb-4">
+                    <h6>Company</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="#">About Us</a></li>
+                        <li><a href="#">Blog</a></li>
+                        <li><a href="#">Careers</a></li>
+                        <li><a href="#">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <h6>Legal</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="#">Terms of Service</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Security Policy</a></li>
+                        <li><a href="#">GDPR Compliance</a></li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="mt-4">
+            <div class="text-center pt-3">
+                <p class="mb-0">&copy; 2024 NetSec Scanner. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/pwa-register.js"></script>
+    <script>
+        async function refreshPublicStats() {
+            try {
+                const s = await fetch('/api/public-stats').then(r => r.json());
+                document.getElementById('scansCount').textContent = Number(s.scans_completed || 0).toLocaleString();
+                document.getElementById('portsCount').textContent = Number(s.ports_scanned || 0).toLocaleString();
+                document.getElementById('vulnsCount').textContent = Number(s.vulnerabilities_found || 0).toLocaleString();
+                document.getElementById('usersCount').textContent = Number(s.happy_users || 0).toLocaleString();
+            } catch (e) { console.error(e); }
+        }
+        refreshPublicStats();
+        setInterval(refreshPublicStats, 5000);
+        
+        let selectedRating = 0;
+        document.querySelectorAll('.rating-star').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                selectedRating = parseInt(btn.getAttribute('data-value'), 10);
+                document.querySelectorAll('.rating-star').forEach(function (b, idx) {
+                    const i = b.querySelector('i');
+                    i.className = idx < selectedRating ? 'fas fa-star' : 'far fa-star';
+                });
+                document.getElementById('ratingSelected').textContent = selectedRating + ' star' + (selectedRating !== 1 ? 's' : '') + ' selected';
+            });
+        });
+        document.getElementById('submitRatingBtn').addEventListener('click', async function () {
+            if (selectedRating < 1) { alert('Select a star rating first'); return; }
+            try {
+                const r = await fetch('/api/rating', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stars: selectedRating, comment: document.getElementById('ratingComment').value })
+                });
+                const d = await r.json();
+                const msg = document.getElementById('ratingMsg');
+                if (r.ok) {
+                    msg.textContent = 'Thank you for your feedback.';
+                    msg.style.display = 'block';
+                } else {
+                    alert(d.error || 'Could not save');
+                }
+            } catch (e) { alert('Failed to submit'); }
+        });
+        
+        document.getElementById('entSubmitBtn').addEventListener('click', async function () {
+            const email = document.getElementById('entEmail').value.trim();
+            if (!email) { alert('Work email is required'); return; }
+            try {
+                const r = await fetch('/api/enterprise-inquiry', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: document.getElementById('entName').value,
+                        email: email,
+                        company: document.getElementById('entCompany').value,
+                        message: document.getElementById('entMessage').value
+                    })
+                });
+                const d = await r.json();
+                if (r.ok) {
+                    document.getElementById('entSuccess').textContent = d.message || 'Sent.';
+                    document.getElementById('entSuccess').style.display = 'block';
+                } else {
+                    alert(d.error || 'Failed');
+                }
+            } catch (e) { alert('Network error'); }
+        });
+        
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+        
+        // Navbar background change on scroll
+        window.addEventListener('scroll', () => {
+            const navbar = document.querySelector('.navbar');
+            if (window.scrollY > 50) {
+                navbar.style.background = 'white';
+                navbar.style.boxShadow = '0 2px 20px rgba(0,0,0,0.1)';
+            } else {
+                navbar.style.background = 'rgba(255,255,255,0.95)';
+            }
+        });
+    </script>
+</body>
+</html>

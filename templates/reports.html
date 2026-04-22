@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - Network Security Scanner</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: #f5f5f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 260px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-menu {
+            padding: 20px 0;
+        }
+        
+        .sidebar-menu-item {
+            padding: 12px 25px;
+            margin: 5px 0;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .sidebar-menu-item:hover, .sidebar-menu-item.active {
+            background: rgba(102, 126, 234, 0.3);
+            border-left: 4px solid #667eea;
+        }
+        
+        .sidebar-menu-item i {
+            width: 30px;
+            margin-right: 10px;
+        }
+        
+        .main-content {
+            margin-left: 260px;
+            padding: 20px;
+        }
+        
+        .report-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .report-item {
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .report-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .risk-critical { border-left-color: #dc3545; }
+        .risk-high { border-left-color: #fd7e14; }
+        .risk-medium { border-left-color: #ffc107; }
+        .risk-low { border-left-color: #28a745; }
+        
+        .filter-buttons .btn {
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h3><i class="fas fa-shield-alt"></i> NetSec</h3>
+            <small>Security Scanner</small>
+        </div>
+        <div class="sidebar-menu">
+            <div class="sidebar-menu-item" onclick="location.href='/dashboard'">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </div>
+            <div class="sidebar-menu-item" onclick="location.href='/scanner'">
+                <i class="fas fa-search"></i> Port Scanner
+            </div>
+            <div class="sidebar-menu-item" onclick="location.href='/network-map'">
+                <i class="fas fa-network-wired"></i> Network Map
+            </div>
+            <div class="sidebar-menu-item active" onclick="location.href='/reports'">
+                <i class="fas fa-chart-line"></i> Reports
+            </div>
+            <div class="sidebar-menu-item" onclick="location.href='/profile'">
+                <i class="fas fa-user"></i> Profile
+            </div>
+            <div class="sidebar-menu-item" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="report-card">
+            <h3><i class="fas fa-chart-line"></i> Scan Reports</h3>
+            <hr>
+            
+            <div class="filter-buttons mb-4">
+                <button class="btn btn-primary" onclick="loadReports('scans')">
+                    <i class="fas fa-history"></i> Scan History
+                </button>
+                <button class="btn btn-danger" onclick="loadReports('vulnerabilities')">
+                    <i class="fas fa-bug"></i> Vulnerabilities
+                </button>
+                <button class="btn btn-info" onclick="loadReports('network')">
+                    <i class="fas fa-network-wired"></i> Network Maps
+                </button>
+                <button class="btn btn-success" onclick="generateExecutiveReport()">
+                    <i class="fas fa-file-pdf"></i> Executive Report
+                </button>
+            </div>
+            
+            <div id="reportsContent">
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-chart-line fa-3x mb-3"></i>
+                    <p>Select a report type to view</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentReportType = 'scans';
+        
+        async function loadReports(type) {
+            currentReportType = type;
+            const contentDiv = document.getElementById('reportsContent');
+            
+            contentDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary"></div></div>';
+            
+            try {
+                const response = await fetch(`/api/reports?type=${type}`);
+                const data = await response.json();
+                
+                if (type === 'scans') {
+                    displayScanReports(data);
+                } else if (type === 'vulnerabilities') {
+                    displayVulnerabilityReports(data);
+                } else if (type === 'network') {
+                    displayNetworkReports(data);
+                }
+            } catch (error) {
+                contentDiv.innerHTML = `<div class="alert alert-danger">Error loading reports: ${error.message}</div>`;
+            }
+        }
+        
+        function displayScanReports(scans) {
+            const contentDiv = document.getElementById('reportsContent');
+            
+            if (!scans || scans.length === 0) {
+                contentDiv.innerHTML = '<div class="alert alert-info">No scan reports found</div>';
+                return;
+            }
+            
+            let html = '<h5>Recent Scans</h5><div class="list-group">';
+            
+            scans.forEach(scan => {
+                const date = new Date(scan.start_time).toLocaleString();
+                const duration = scan.end_time ? ((new Date(scan.end_time) - new Date(scan.start_time)) / 1000).toFixed(1) : 'N/A';
+                
+                html += `
+                    <div class="report-item" onclick="viewScanDetails(${scan.id})">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong><i class="fas fa-bullseye"></i> ${scan.target}</strong><br>
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar"></i> ${date} | 
+                                    <i class="fas fa-clock"></i> ${duration}s | 
+                                    <i class="fas fa-door-open"></i> ${scan.open_ports} open ports
+                                </small>
+                            </div>
+                            <div>
+                                <span class="badge bg-primary">${scan.scan_type || 'TCP'}</span>
+                                <button class="btn btn-sm btn-outline-success ms-2" onclick="event.stopPropagation(); exportReport(${scan.id})">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            contentDiv.innerHTML = html;
+        }
+        
+        function displayVulnerabilityReports(vulns) {
+            const contentDiv = document.getElementById('reportsContent');
+            
+            if (!vulns || vulns.length === 0) {
+                contentDiv.innerHTML = '<div class="alert alert-success">No vulnerabilities found! Your network is secure.</div>';
+                return;
+            }
+            
+            // Group by severity
+            const critical = vulns.filter(v => v.severity === 'CRITICAL');
+            const high = vulns.filter(v => v.severity === 'HIGH');
+            const medium = vulns.filter(v => v.severity === 'MEDIUM');
+            const low = vulns.filter(v => v.severity === 'LOW');
+            
+            let html = `
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card text-center border-danger">
+                            <div class="card-body">
+                                <h5 class="text-danger">Critical</h5>
+                                <h3>${critical.length}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center border-warning">
+                            <div class="card-body">
+                                <h5 class="text-warning">High</h5>
+                                <h3>${high.length}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center border-info">
+                            <div class="card-body">
+                                <h5 class="text-info">Medium</h5>
+                                <h3>${medium.length}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center border-success">
+                            <div class="card-body">
+                                <h5 class="text-success">Low</h5>
+                                <h3>${low.length}</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <h5>Vulnerability Details</h5>
+            `;
+            
+            [...critical, ...high, ...medium, ...low].forEach(vuln => {
+                let severityClass = '';
+                if (vuln.severity === 'CRITICAL') severityClass = 'risk-critical';
+                else if (vuln.severity === 'HIGH') severityClass = 'risk-high';
+                else if (vuln.severity === 'MEDIUM') severityClass = 'risk-medium';
+                else severityClass = 'risk-low';
+                
+                html += `
+                    <div class="report-item ${severityClass}">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>${vuln.vulnerability}</strong><br>
+                                <small>
+                                    <i class="fas fa-server"></i> ${vuln.host}:${vuln.port} |
+                                    <i class="fas fa-tag"></i> ${vuln.cve_id || 'No CVE'} |
+                                    <span class="badge bg-${vuln.severity === 'CRITICAL' ? 'danger' : vuln.severity === 'HIGH' ? 'warning' : vuln.severity === 'MEDIUM' ? 'info' : 'success'}">
+                                        ${vuln.severity}
+                                    </span>
+                                </small>
+                                <div class="mt-2">
+                                    <small class="text-muted"><i class="fas fa-lightbulb"></i> ${vuln.recommendation}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            contentDiv.innerHTML = html;
+        }
+        
+        function displayNetworkReports(maps) {
+            const contentDiv = document.getElementById('reportsContent');
+            
+            if (!maps || maps.length === 0) {
+                contentDiv.innerHTML = '<div class="alert alert-info">No network maps found</div>';
+                return;
+            }
+            
+            let html = '<h5>Network Discovery History</h5><div class="list-group">';
+            
+            maps.forEach(map => {
+                const date = new Date(map.discovery_time).toLocaleString();
+                
+                html += `
+                    <div class="report-item" onclick="viewNetworkMap(${map.id})">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong><i class="fas fa-globe"></i> ${map.network}</strong><br>
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar"></i> ${date} | 
+                                    <i class="fas fa-microchip"></i> ${map.hosts_found} hosts found
+                                </small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); viewNetworkMap(${map.id})">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            contentDiv.innerHTML = html;
+        }
+        
+        async function viewScanDetails(scanId) {
+            try {
+                const response = await fetch(`/api/scan-status/${scanId}`);
+                const data = await response.json();
+                
+                // Open modal with scan details
+                const details = `
+                    Target: ${data.target}\n
+                    Date: ${new Date(data.start_time).toLocaleString()}\n
+                    Duration: ${((new Date(data.end_time) - new Date(data.start_time)) / 1000).toFixed(2)} seconds\n
+                    Open Ports: ${data.open_ports}\n
+                    Total Ports: ${data.total_ports}\n
+                    Scan Type: ${data.scan_type}
+                `;
+                
+                alert(details);
+            } catch (error) {
+                alert('Error loading scan details');
+            }
+        }
+        
+        function viewNetworkMap(mapId) {
+            window.location.href = `/network-map?id=${mapId}`;
+        }
+        
+        async function exportReport(scanId) {
+            try {
+                const response = await fetch(`/api/export-report/${scanId}`, { credentials: 'same-origin' });
+                const report = await response.json();
+                
+                const dataStr = JSON.stringify(report, null, 2);
+                const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                const exportFileName = `report_${scanId}_${Date.now()}.json`;
+                
+                const linkElement = document.createElement('a');
+                linkElement.setAttribute('href', dataUri);
+                linkElement.setAttribute('download', exportFileName);
+                linkElement.click();
+            } catch (error) {
+                alert('Export failed: ' + error.message);
+            }
+        }
+        
+        function generateExecutiveReport() {
+            alert('Executive report generation - This would create a comprehensive PDF report with executive summary, risk assessment, and recommendations.');
+        }
+        
+        function logout() {
+            window.location.href = '/logout';
+        }
+        
+        // Load initial reports
+        loadReports('scans');
+    </script>
+</body>
+</html>
